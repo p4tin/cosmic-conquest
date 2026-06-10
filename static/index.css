@@ -1,0 +1,156 @@
+body {
+    background-color: #000;
+    color: #0f0;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    overflow: hidden;
+}
+#title-banner {
+    font-size: 4rem;
+    color: #fff;
+    text-shadow: 0 0 10px #0f0, 0 0 20px #0f0, 0 0 40px #0f0;
+    margin-bottom: 30px;
+    letter-spacing: 10px;
+    font-weight: bold;
+    text-align: center;
+}
+#game-container {
+    border: 2px solid #0f0;
+    padding: 20px;
+    background: #050505;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+    width: 900px;
+    text-align: center;
+}
+#stats {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #0f0;
+    padding-bottom: 10px;
+    font-size: 1.1rem;
+}
+#map {
+    line-height: 1.3;
+    letter-spacing: 12px;
+    margin: 25px 0;
+    cursor: default;
+    text-align: center;
+    font-size: 1.8rem;
+    white-space: nowrap;
+}
+#log {
+    height: 60px;
+    border-top: 1px solid #0f0;
+    padding-top: 15px;
+    font-size: 1.1rem;
+    color: #0a0;
+}
+.controls {
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: #888;
+    text-align: center;
+}
+#footer {
+    font-size: 0.8rem;
+    color: #333;
+    margin-top: 30px;
+    letter-spacing: 2px;
+    text-align: center;
+}
+.highlight { color: #fff; text-shadow: 0 0 5px #fff; font-weight: bold; }
+.enemy { color: #f00; }
+.player { color: #0af; }
+button { background: #0f0; color: #000; border: none; padding: 10px 20px; font-family: inherit; cursor: pointer; margin-top: 10px; font-size: 1.1rem; }
+
+#manual-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    overflow: auto;
+}
+#manual-content {
+    background-color: #050505;
+    margin: 5% auto;
+    padding: 30px;
+    border: 2px solid #0f0;
+    width: 80%;
+    max-width: 800px;
+    box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+    font-family: sans-serif;
+    color: #ddd;
+    line-height: 1.6;
+    text-align: left;
+}
+#manual-content h1, #manual-content h2 { color: #0f0; border-bottom: 1px solid #333; padding-bottom: 5px; }
+#manual-content code { background: #222; padding: 2px 5px; color: #0f0; border-radius: 3px; }
+.close-btn {
+    color: #0f0;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.close-btn:hover { color: #fff; }
+#difficulty-modal {
+    display: none;
+    position: fixed;
+    z-index: 1100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+}
+#difficulty-content {
+    background-color: #050505;
+    margin: 10% auto;
+    padding: 24px;
+    border: 2px solid #0f0;
+    width: 90%;
+    max-width: 480px;
+    box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+    color: #ddd;
+    font-family: inherit;
+}
+.diff-options { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
+.diff-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #333;
+    cursor: pointer;
+    background: #0a0a0a;
+}
+.diff-option:hover { border-color: #0f0; }
+.diff-option input[type="radio"] { accent-color: #0f0; }
+.diff-option.selected { border-color: #0f0; box-shadow: 0 0 10px rgba(0, 255, 0, 0.4); }
+.diff-label { font-weight: bold; font-size: 1.2rem; min-width: 80px; }
+.diff-desc { color: #888; font-size: 0.9rem; }
+.diff-buttons { display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; }
+.diff-action {
+    flex: 1;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 1rem;
+    cursor: pointer;
+    border: 1px solid #0f0;
+    background: #000;
+    color: #0f0;
+}
+.diff-action:hover { background: #0f0; color: #000; }
+.diff-action.primary { background: #0f0; color: #000; }
+.diff-action.primary:hover { background: #fff; color: #000; }

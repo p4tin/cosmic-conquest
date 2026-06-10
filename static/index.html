@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!-- Cosmic Conquest - 1982 Revival Client -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cosmic Conquest - 1982 Revival</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+
+<div id="title-banner">COSMIC CONQUEST</div>
+
+<div id="game-container">
+    <div id="stats">
+        <span>SHIPS: <span id="ship-count" class="highlight">50</span> <span style="font-size: 0.8em; color: #0f0">(LS: -<span id="ls-count">0</span>)</span></span>
+        <span>HULL: <span id="hull-count" class="highlight">100</span>%</span>
+        <span>PLANETS: <span id="planet-count" class="highlight">0</span></span>
+        <span>FUEL: <span id="fuel-count" class="highlight">25</span></span>
+        <span>TURN: <span id="turn-count" class="highlight">1</span></span>
+        <span>DIFF: <span id="difficulty-display" class="highlight">EASY</span></span>
+        <span>POS: [<span id="pos-display">0,0</span>]</span>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="log">WELCOME COMMANDER. PRESS 'C' TO COLONIZE YOUR STARTING SECTOR.</div>
+
+    <div class="controls">
+        [WASD] Move | [R] Report | [P] Pulse Scan | [C] Colonize | [F] Fight <br>
+        [X] Scrap Ships | [H] Repair Hull | [N] New Game <br>
+        <b>Build (20 Ships):</b> [1] Shipyard [2] Sensor Array [3] Orbital Battery <br>
+        <span style="color: #666">Press <b style="color: #0f0">[M]</b> to view the Commander's Manual</span>
+    </div>
+</div>
+
+<div id="footer">Brought to you by Bitbandit</div>
+
+<div id="manual-modal">
+    <div id="manual-content">
+        <span class="close-btn" onclick="document.getElementById('manual-modal').style.display='none'">&times;</span>
+        <div id="markdown-container"></div>
+    </div>
+</div>
+
+<div id="difficulty-modal">
+    <div id="difficulty-content">
+        <h2 style="color:#0f0;text-align:center;margin-top:0;">SELECT DIFFICULTY</h2>
+        <p style="text-align:center;color:#0af;">How tough should the Cylons be?</p>
+        <div class="diff-options">
+            <label class="diff-option" data-difficulty="EASY">
+                <input type="radio" name="difficulty" value="EASY" checked>
+                <span class="diff-label" style="color:#0f0;">EASY</span>
+                <span class="diff-desc">A gentle start. Good for first-time Commanders.</span>
+            </label>
+            <label class="diff-option" data-difficulty="MEDIUM">
+                <input type="radio" name="difficulty" value="MEDIUM">
+                <span class="diff-label" style="color:#ff0;">MEDIUM</span>
+                <span class="diff-desc">Cylons expand faster. The Hunter appears sooner.</span>
+            </label>
+            <label class="diff-option" data-difficulty="HARD">
+                <input type="radio" name="difficulty" value="HARD">
+                <span class="diff-label" style="color:#f00;">HARD</span>
+                <span class="diff-desc">The Cylons are relentless. The Hunter is always near.</span>
+            </label>
+        </div>
+        <div class="diff-buttons">
+            <button id="diff-cancel" class="diff-action">CANCEL</button>
+            <button id="diff-ok" class="diff-action primary">START GAME</button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/index.js"></script>
+</body>
+</html>

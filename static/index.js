@@ -5,6 +5,20 @@ const INITIAL_CONTENT = GAME_BOX.innerHTML;
 let sessionId = null;
 let lastDifficulty = 'EASY';
 
+// Derive the deployment base path from the current URL so the app works
+// both at "/" (local) and behind a reverse-proxy prefix like "/cosmic-conquest".
+// The page is served at the base path; strip everything from "/static" onward
+// if present, otherwise fall back to the directory of the current path.
+function detectBasePath() {
+    const path = window.location.pathname;
+    const staticIdx = path.indexOf('/static');
+    if (staticIdx >= 0) return path.substring(0, staticIdx);
+    const apiIdx = path.indexOf('/api');
+    if (apiIdx >= 0) return path.substring(0, apiIdx);
+    return path.replace(/\/[^/]*$/, '');
+}
+const BASE_PATH = detectBasePath();
+
 const manualMarkdown = `
 # Cosmic Conquest: Commander's Manual
 
@@ -115,7 +129,7 @@ function attachDifficultyModalHandlers() {
 attachDifficultyModalHandlers();
 
 async function startNewGame(difficulty) {
-    const res = await fetch(`/api/new_game?difficulty=${encodeURIComponent(difficulty)}`, { method: 'POST' });
+    const res = await fetch(`${BASE_PATH}/api/new_game?difficulty=${encodeURIComponent(difficulty)}`, { method: 'POST' });
     const state = await res.json();
     sessionId = state.session_id;
     GAME_BOX.innerHTML = INITIAL_CONTENT;
@@ -134,7 +148,7 @@ async function sendAction(action, params = {}) {
 
     const body = { session_id: sessionId, ...params };
 
-    const res = await fetch(`/api/${action}`, {
+    const res = await fetch(`${BASE_PATH}/api/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)

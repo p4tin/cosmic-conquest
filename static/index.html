@@ -4,8 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <title>Cosmic Conquest - 1982 Revival</title>
+    <script>
+    (function() {
+        var path = window.location.pathname;
+        var base = path.replace(/\/[^/]*$/, '');
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = base + '/static/index.css';
+        document.head.appendChild(link);
+    })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="stylesheet" href="static/index.css">
 </head>
 <body>
 
@@ -71,6 +80,14 @@
     </div>
 </div>
 
-<script src="static/index.js"></script>
+<script>
+(function() {
+    var path = window.location.pathname;
+    var base = path.replace(/\/[^/]*$/, '');
+    var s = document.createElement('script');
+    s.src = base + '/static/index.js';
+    document.body.appendChild(s);
+})();
+</script>
 </body>
 </html>

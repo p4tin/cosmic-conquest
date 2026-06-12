@@ -31,6 +31,31 @@ r = redis.Redis(
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "static")), name="static")
 
+BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
+
+
+class PrefixMiddleware:
+    """Strip BASE_PATH from incoming request scope so existing routes work
+    unchanged, and re-add it on the response so redirects and Location
+    headers stay correct."""
+
+    def __init__(self, app, prefix: str = ""):
+        self.app = app
+        self.prefix = prefix
+
+    async def __call__(self, scope, receive, send):
+        if self.prefix and scope["type"] in ("http", "websocket"):
+            path = scope.get("path", "")
+            if path.startswith(self.prefix):
+                scope = dict(scope)
+                scope["path"] = path[len(self.prefix):] or "/"
+                scope["raw_path"] = scope["raw_path"][len(self.prefix):] or b"/"
+        await self.app(scope, receive, send)
+
+
+if BASE_PATH:
+    app.add_middleware(PrefixMiddleware, prefix=BASE_PATH)
+
 # --- Domain Models ---
 class Sector(BaseModel):
     x: int

@@ -122,6 +122,17 @@ REDIS_USER=default
 
 `python-dotenv` loads this file at startup.
 
+### Deploying Behind a Reverse-Proxy Prefix
+
+If you expose the app under a path prefix (e.g. Tailscale Funnel with `-set-path /cosmic-conquest`, or nginx with a `location /cosmic-conquest/` block), set the `BASE_PATH` env var to the same prefix when launching the server:
+
+```bash
+export BASE_PATH=/cosmic-conquest
+./manage.sh start
+```
+
+A small ASGI middleware (`PrefixMiddleware` in `src/main.py`) reads `BASE_PATH` and strips the prefix from incoming request scopes so the existing route table is unchanged. Leave `BASE_PATH` unset (or empty) for local development at `http://127.0.0.1:8000/`.
+
 ## License
 
 Brought to you by Bitbandit.

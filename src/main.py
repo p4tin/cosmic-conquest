@@ -31,6 +31,8 @@ r = redis.Redis(
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "static")), name="static")
 
+MAX_FUEL = 35
+
 BASE_PATH = os.getenv("BASE_PATH", "").rstrip("/")
 
 
@@ -346,7 +348,7 @@ class Game:
                 if loc in self.galaxy:
                     s = self.galaxy[loc]
                     if s.is_gas_cloud:
-                        self.player.fuel = 25
+                        self.player.fuel = min(MAX_FUEL, self.player.fuel + 25)
                         s.scanned = True
                         self.log += " GAS CLOUD REACHED. Tanks refilled!"
                     
@@ -378,7 +380,7 @@ class Game:
                             self.player.fuel_efficiency = True
                             self.log += " ANCIENT RELIC FOUND! Engine efficiency improved."
                         elif buff == "extra_fuel":
-                            self.player.fuel += 25
+                            self.player.fuel = min(MAX_FUEL, self.player.fuel + 25)
                             self.log += " ANCIENT RELIC FOUND! Fuel reserves increased."
                         elif buff == "warp_jump":
                             self.player.x = random.randint(0, self.width - 1)
@@ -410,7 +412,7 @@ class Game:
             # Check for gas cloud
             loc = (self.player.x, self.player.y)
             if loc in self.galaxy and self.galaxy[loc].is_gas_cloud:
-                self.player.fuel = 25
+                self.player.fuel = min(MAX_FUEL, self.player.fuel + 25)
                 self.galaxy[loc].scanned = True
                 self.log = "STUMBLED into a Gas Cloud while drifting! Refueled."
             

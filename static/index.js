@@ -60,7 +60,7 @@ Each building costs 20 ships to make. You can only build ONE thing per planet.
 
 ## Cool Things In Space
 While exploring you might find these special squares:
-* **@ (Gas Cloud)** - Free fuel! Move onto it and your tank fills up.
+* **@ (Gas Cloud)** - Free fuel! Add 25 to your tank (capped at 35).
 * **B (Black Hole)** - DANGER! Don't go here! It hurts your ship and flings you somewhere random.
 * **N (Nebula)** - A cloud you can hide inside. The Hunter can't see you here, but you also can't see anything.
 * **R (Ancient Relic)** - Super cool old alien tech! It gives you a permanent power-up like better weapons or a faster engine.

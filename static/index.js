@@ -2,7 +2,6 @@ const WIDTH = 20;
 const HEIGHT = 10;
 const GAME_BOX = document.getElementById('game-container');
 const INITIAL_CONTENT = GAME_BOX.innerHTML;
-let sessionId = null;
 let lastDifficulty = 'EASY';
 
 // Derive the deployment base path from the current URL so the app works
@@ -129,9 +128,14 @@ function attachDifficultyModalHandlers() {
 attachDifficultyModalHandlers();
 
 async function startNewGame(difficulty) {
-    const res = await fetch(`${BASE_PATH}/api/new_game?difficulty=${encodeURIComponent(difficulty)}`, { method: 'POST' });
+    const res = await fetch(`${BASE_PATH}/api/new_game?difficulty=${encodeURIComponent(difficulty)}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('cc_token')}`
+        }
+    });
     const state = await res.json();
-    sessionId = state.session_id;
     GAME_BOX.innerHTML = INITIAL_CONTENT;
     render(state);
 }
@@ -141,22 +145,25 @@ async function newGame() {
 }
 
 async function sendAction(action, params = {}) {
-    if (!sessionId) {
-        console.error("No active session.");
-        return;
-    }
-
-    const body = { session_id: sessionId, ...params };
+    const body = { ...params };
 
     const res = await fetch(`${BASE_PATH}/api/${action}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('cc_token')}`
+        },
         body: JSON.stringify(body)
     });
 
     if (res.ok) {
         const state = await res.json();
         render(state);
+    } else if (res.status === 401) {
+        // Token expired mid-session — redirect to login
+        localStorage.removeItem('cc_token');
+        showLoginOverlay();
+        showEmailStep();
     } else {
         console.error("Error from server:", await res.text());
         document.getElementById('log').innerText = "ERROR: Could not contact server.";
@@ -268,4 +275,152 @@ window.addEventListener('keydown', (e) => {
     else if (key === 'n') newGame();
 });
 
-newGame();
+// ── Login UI helpers ────────────────────────────────────────────────────────
+
+function showLoginOverlay() {
+    document.getElementById('login-overlay').style.display = 'block';
+    document.getElementById('game-container').style.display = 'none';
+}
+
+function hideLoginOverlay() {
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('game-container').style.display = 'block';
+}
+
+function showEmailStep() {
+    document.getElementById('email-step').style.display = 'block';
+    document.getElementById('otp-step').style.display = 'none';
+    document.getElementById('email-error').textContent = '';
+    document.getElementById('otp-error').textContent = '';
+}
+
+function showOtpStep() {
+    document.getElementById('email-step').style.display = 'none';
+    document.getElementById('otp-step').style.display = 'block';
+    document.getElementById('otp-input').value = '';
+    document.getElementById('otp-error').textContent = '';
+}
+
+// ── Login flow ───────────────────────────────────────────────────────────────
+
+document.getElementById('send-code-btn').addEventListener('click', async () => {
+    const emailInput = document.getElementById('email-input');
+    const emailError = document.getElementById('email-error');
+    const btn = document.getElementById('send-code-btn');
+    const email = emailInput.value.trim();
+
+    emailError.textContent = '';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${BASE_PATH}/api/auth/request-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+
+        if (res.ok) {
+            showOtpStep();
+        } else {
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 429) {
+                emailError.textContent = 'TOO MANY REQUESTS. WAIT BEFORE RETRYING.';
+            } else if (res.status === 422) {
+                const detail = data.detail;
+                emailError.textContent = Array.isArray(detail)
+                    ? 'INVALID EMAIL ADDRESS.'
+                    : (detail || 'INVALID EMAIL ADDRESS.');
+            } else if (res.status === 503) {
+                emailError.textContent = 'EMAIL DELIVERY FAILED. TRY AGAIN LATER.';
+            } else {
+                emailError.textContent = data.detail || 'SERVER ERROR. TRY AGAIN LATER.';
+            }
+        }
+    } catch (err) {
+        emailError.textContent = 'NETWORK ERROR. CHECK CONNECTION.';
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+document.getElementById('verify-btn').addEventListener('click', async () => {
+    const email = document.getElementById('email-input').value.trim();
+    const code = document.getElementById('otp-input').value.trim();
+    const otpError = document.getElementById('otp-error');
+    const btn = document.getElementById('verify-btn');
+
+    otpError.textContent = '';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${BASE_PATH}/api/auth/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem('cc_token', data.token);
+            hideLoginOverlay();
+            // Try to load existing game; if none exists, start new
+            const stateRes = await fetch(`${BASE_PATH}/api/state`, {
+                headers: { 'Authorization': `Bearer ${data.token}` }
+            });
+            if (stateRes.ok) {
+                const state = await stateRes.json();
+                render(state);
+            } else {
+                newGame();
+            }
+        } else {
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 401) {
+                otpError.textContent = data.detail || 'INVALID CODE.';
+            } else {
+                otpError.textContent = data.detail || 'SERVER ERROR. TRY AGAIN LATER.';
+            }
+        }
+    } catch (err) {
+        otpError.textContent = 'NETWORK ERROR. CHECK CONNECTION.';
+    } finally {
+        btn.disabled = false;
+    }
+});
+
+// ── Page load auth check ─────────────────────────────────────────────────────
+
+(async function initAuth() {
+    const token = localStorage.getItem('cc_token');
+    if (!token) {
+        showLoginOverlay();
+        return;
+    }
+
+    try {
+        const res = await fetch(`${BASE_PATH}/api/auth/validate`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+            hideLoginOverlay();
+            // Try to load existing game state; if none exists, prompt new game
+            const stateRes = await fetch(`${BASE_PATH}/api/state`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (stateRes.ok) {
+                const state = await stateRes.json();
+                render(state);
+            } else {
+                // No saved game — start a new one
+                newGame();
+            }
+        } else {
+            localStorage.removeItem('cc_token');
+            showLoginOverlay();
+        }
+    } catch (err) {
+        // Network error — still show login so user can retry
+        showLoginOverlay();
+    }
+})();

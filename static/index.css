@@ -154,3 +154,83 @@ button { background: #0f0; color: #000; border: none; padding: 10px 20px; font-f
 .diff-action:hover { background: #0f0; color: #000; }
 .diff-action.primary { background: #0f0; color: #000; }
 .diff-action.primary:hover { background: #fff; color: #000; }
+
+/* ── Login Overlay ── */
+#login-overlay {
+    border: 2px solid #0f0;
+    padding: 40px;
+    background: #050505;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+    width: 480px;
+    text-align: center;
+}
+.login-label {
+    color: #0f0;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+.login-field {
+    margin-bottom: 16px;
+}
+#email-input,
+#otp-input {
+    background: #000;
+    border: 1px solid #0f0;
+    color: #0f0;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.1rem;
+    padding: 10px 14px;
+    width: 100%;
+    box-sizing: border-box;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    outline: none;
+}
+#email-input::placeholder,
+#otp-input::placeholder {
+    color: #1a4d1a;
+    letter-spacing: 2px;
+}
+#email-input:focus,
+#otp-input:focus {
+    border-color: #fff;
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+}
+#send-code-btn,
+#verify-btn {
+    background: #0f0;
+    color: #000;
+    border: none;
+    padding: 10px 32px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    cursor: pointer;
+    width: 100%;
+}
+#send-code-btn:hover,
+#verify-btn:hover {
+    background: #fff;
+}
+#send-code-btn:disabled,
+#verify-btn:disabled {
+    background: #1a4d1a;
+    color: #0a0;
+    cursor: not-allowed;
+}
+.login-error {
+    color: #f00;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-height: 1.2em;
+    margin-top: 6px;
+    text-shadow: 0 0 6px #f00;
+}

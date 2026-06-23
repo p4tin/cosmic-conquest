@@ -1,5 +1,6 @@
 # Cosmic Conquest - Main Game Server
-from fastapi import FastAPI, Depends, HTTPException, Query
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -7,15 +8,18 @@ from typing import Dict, Optional
 import os
 import random
 import uvicorn
-import uuid
 import json
 import redis
 from dotenv import load_dotenv
 
 try:
     from .cylon import CylonAI
+    from . import auth
+    from .auth import BearerTokenMiddleware
 except ImportError:
     from cylon import CylonAI
+    import auth
+    from auth import BearerTokenMiddleware
 
 # Load Redis credentials
 load_dotenv()
@@ -28,7 +32,23 @@ r = redis.Redis(
     decode_responses=True
 )
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app):
+    # Startup: validate required env vars
+    await validate_env()
+    yield
+    # Shutdown: nothing to clean up
+
+
+async def validate_env():
+    """Raise RuntimeError if required Gmail env vars are missing."""
+    missing = [v for v in ("GMAIL_ADDRESS", "GMAIL_APP_PASSWORD") if not os.getenv(v)]
+    if missing:
+        raise RuntimeError(f"Missing required environment variables: {missing}")
+
+
+app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "static")), name="static")
 
 MAX_FUEL = 35
@@ -57,6 +77,18 @@ class PrefixMiddleware:
 
 if BASE_PATH:
     app.add_middleware(PrefixMiddleware, prefix=BASE_PATH)
+
+# Inject the shared Redis client into the auth module (avoids circular import)
+auth.set_redis(r)
+
+# Register auth router (/api/auth/*)
+app.include_router(auth.router)
+
+# BearerTokenMiddleware is added after PrefixMiddleware so it executes inside
+# it (FastAPI applies middleware in reverse registration order — last added
+# runs first, so this one wraps the inner app after the prefix is stripped).
+app.add_middleware(BearerTokenMiddleware, redis_client=r)
+
 
 # --- Domain Models ---
 class Sector(BaseModel):
@@ -88,7 +120,6 @@ class GameState(BaseModel):
     log: str
     game_over: bool
     victory: bool
-    session_id: str
     planets_owned: int = 0
     gas_clouds_owned: int = 0
     hunter_active: bool = False
@@ -99,7 +130,6 @@ class GameState(BaseModel):
     difficulty: str = "EASY"
 
 class ActionRequest(BaseModel):
-    session_id: str
     direction: Optional[str] = None
     build_type: Optional[str] = None
 
@@ -181,7 +211,7 @@ class Game:
                     anomaly=anomaly_type
                 )
 
-    def to_state(self, session_id: str) -> GameState:
+    def to_state(self) -> GameState:
         p_count = sum(s.planets for s in self.galaxy.values() if s.owner == "Player")
         g_count = sum(1 for s in self.galaxy.values() if s.owner == "Player" and s.is_gas_cloud)
         
@@ -194,7 +224,6 @@ class Game:
             log=self.log,
             game_over=self.game_over,
             victory=self.victory,
-            session_id=session_id,
             planets_owned=p_count,
             gas_clouds_owned=g_count,
             hunter_active=self.hunter_active,
@@ -531,8 +560,8 @@ class Game:
             self.log = "INSUFFICIENT SHIPS FOR REPAIRS! (Requires 20)"
 
 # --- Game Session Management ---
-def get_game(session_id: str) -> Game:
-    game_json = r.get(f"session:{session_id}")
+def get_game(email: str) -> Game:
+    game_json = r.get(f"session:{email}")
     if not game_json:
         raise HTTPException(status_code=404, detail="Session not found")
     
@@ -541,9 +570,9 @@ def get_game(session_id: str) -> Game:
     game.load_from_state(state)
     return game
 
-def save_game(session_id: str, game: Game):
-    state_json = game.to_state(session_id).model_dump_json()
-    r.set(f"session:{session_id}", state_json, ex=86400) # 24h expiry
+def save_game(email: str, game: Game):
+    state_json = game.to_state().model_dump_json()
+    r.set(f"session:{email}", state_json, ex=604800)  # 7-day expiry
 
 # --- Endpoints ---
 @app.get("/")
@@ -551,59 +580,66 @@ async def read_root():
     return FileResponse(os.path.join(os.path.dirname(__file__), "..", "static", "index.html"))
 
 @app.get("/api/state")
-def get_state(session_id: str):
-    game = get_game(session_id)
-    return game.to_state(session_id)
+def get_state(request: Request):
+    email = request.state.player_email
+    game = get_game(email)
+    return game.to_state()
 
 @app.post("/api/new_game")
-def new_game(difficulty: str = Query("EASY")):
+def new_game(request: Request, difficulty: str = Query("EASY")):
+    email = request.state.player_email
     difficulty = difficulty.upper()
     if difficulty not in CylonAI.DIFFICULTY_PRESETS:
         difficulty = "EASY"
-    session_id = str(uuid.uuid4())
     game = Game(difficulty=difficulty)
-    save_game(session_id, game)
-    return game.to_state(session_id)
+    save_game(email, game)
+    return game.to_state()
 
 @app.post("/api/move")
-def move_player(req: ActionRequest):
-    game = get_game(req.session_id)
+def move_player(req: ActionRequest, request: Request):
+    email = request.state.player_email
+    game = get_game(email)
     game.move(req.direction)
-    save_game(req.session_id, game)
-    return game.to_state(req.session_id)
+    save_game(email, game)
+    return game.to_state()
 
 @app.post("/api/pulse")
-def pulse_scan(req: ActionRequest):
-    game = get_game(req.session_id)
+def pulse_scan(req: ActionRequest, request: Request):
+    email = request.state.player_email
+    game = get_game(email)
     game.pulse()
-    save_game(req.session_id, game)
-    return game.to_state(req.session_id)
+    save_game(email, game)
+    return game.to_state()
 
 @app.post("/api/report")
-def report_sector(req: ActionRequest):
-    game = get_game(req.session_id)
+def report_sector(req: ActionRequest, request: Request):
+    email = request.state.player_email
+    game = get_game(email)
     game.report()
-    save_game(req.session_id, game)
-    return game.to_state(req.session_id)
+    save_game(email, game)
+    return game.to_state()
 
 @app.post("/api/fight")
-def fight_sector(req: ActionRequest):
-    game = get_game(req.session_id)
+def fight_sector(req: ActionRequest, request: Request):
+    email = request.state.player_email
+    game = get_game(email)
     game.fight()
-    save_game(req.session_id, game)
-    return game.to_state(req.session_id)
+    save_game(email, game)
+    return game.to_state()
 
 @app.post("/api/colonize")
-def colonize_sector(req: ActionRequest):
-    game = get_game(req.session_id)
+def colonize_sector(req: ActionRequest, request: Request):
+    email = request.state.player_email
+    game = get_game(email)
     game.colonize()
-    save_game(req.session_id, game)
-    return game.to_state(req.session_id)
+    save_game(email, game)
+    return game.to_state()
 
 @app.post("/api/scrap")
-def scrap_ships(req: ActionRequest):
-    game = get_game(req.session_id)
-    if game.game_over: return game.to_state(req.session_id)
+def scrap_ships(req: ActionRequest, request: Request):
+    email = request.state.player_email
+    game = get_game(email)
+    if game.game_over: return game.to_state()
     if game.player.ships >= 10:
         game.player.ships -= 10
         game.player.fuel += 25
@@ -611,23 +647,25 @@ def scrap_ships(req: ActionRequest):
         game.end_turn()
     else:
         game.log = "NOT ENOUGH SHIPS TO SCRAP! (Requires 10)"
-    save_game(req.session_id, game)
-    return game.to_state(req.session_id)
+    save_game(email, game)
+    return game.to_state()
 
 @app.post("/api/build")
-def build_infrastructure(req: ActionRequest):
-    game = get_game(req.session_id)
+def build_infrastructure(req: ActionRequest, request: Request):
+    email = request.state.player_email
+    game = get_game(email)
     if req.build_type:
         game.build(req.build_type)
-    save_game(req.session_id, game)
-    return game.to_state(req.session_id)
+    save_game(email, game)
+    return game.to_state()
 
 @app.post("/api/repair")
-def repair_hull(req: ActionRequest):
-    game = get_game(req.session_id)
+def repair_hull(req: ActionRequest, request: Request):
+    email = request.state.player_email
+    game = get_game(email)
     game.repair()
-    save_game(req.session_id, game)
-    return game.to_state(req.session_id)
+    save_game(email, game)
+    return game.to_state()
 
 if __name__ == "__main__":
     print("\n🚀 Cosmic Conquest Server Running!")

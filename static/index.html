@@ -20,7 +20,31 @@
 
 <div id="title-banner">COSMIC CONQUEST</div>
 
-<div id="game-container">
+<!-- Login overlay — shown by default; hidden after successful auth -->
+<div id="login-overlay">
+    <div id="email-step">
+        <p class="login-label">ENTER YOUR EMAIL ADDRESS TO RECEIVE AN ACCESS CODE</p>
+        <div class="login-field">
+            <input type="email" id="email-input" placeholder="COMMANDER@EXAMPLE.COM" autocomplete="email" />
+        </div>
+        <div class="login-field">
+            <button id="send-code-btn">SEND CODE</button>
+        </div>
+        <div id="email-error" class="login-error"></div>
+    </div>
+    <div id="otp-step" style="display:none;">
+        <p class="login-label">ENTER THE 6-DIGIT CODE SENT TO YOUR EMAIL</p>
+        <div class="login-field">
+            <input type="text" id="otp-input" placeholder="000000" maxlength="6" autocomplete="one-time-code" />
+        </div>
+        <div class="login-field">
+            <button id="verify-btn">VERIFY</button>
+        </div>
+        <div id="otp-error" class="login-error"></div>
+    </div>
+</div>
+
+<div id="game-container" style="display:none;">
     <div id="stats">
         <span>SHIPS: <span id="ship-count" class="highlight">50</span> <span style="font-size: 0.8em; color: #0f0">(LS: -<span id="ls-count">0</span>)</span></span>
         <span>HULL: <span id="hull-count" class="highlight">100</span>%</span>

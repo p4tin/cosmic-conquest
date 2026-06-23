@@ -11,10 +11,10 @@ body {
     overflow: hidden;
 }
 #title-banner {
-    font-size: 4rem;
+    font-size: 2rem;
     color: #fff;
     text-shadow: 0 0 10px #0f0, 0 0 20px #0f0, 0 0 40px #0f0;
-    margin-bottom: 30px;
+    margin-bottom: 10px;
     letter-spacing: 10px;
     font-weight: bold;
     text-align: center;
@@ -26,6 +26,34 @@ body {
     box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
     width: 900px;
     text-align: center;
+}
+#user-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 2px;
+    padding: 2px 10px;
+    border-bottom: 1px solid #333;
+    font-size: 0.8em;
+}
+#user-email {
+    color: #0af;
+    text-transform: uppercase;
+}
+#logout-btn {
+    background: none;
+    border: 1px solid #f00;
+    color: #f00;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.8em;
+    padding: 4px 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    margin-bottom: 13px;
+}
+#logout-btn:hover {
+    background: #f00;
+    color: #000;
 }
 #stats {
     width: 100%;

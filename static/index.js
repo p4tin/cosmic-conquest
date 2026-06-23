@@ -280,11 +280,22 @@ window.addEventListener('keydown', (e) => {
 function showLoginOverlay() {
     document.getElementById('login-overlay').style.display = 'block';
     document.getElementById('game-container').style.display = 'none';
+    showEmailStep();
 }
 
 function hideLoginOverlay() {
     document.getElementById('login-overlay').style.display = 'none';
     document.getElementById('game-container').style.display = 'block';
+}
+
+function setUserEmail(email) {
+    document.getElementById('user-email').textContent = email ? `COMMANDER: ${email}` : '';
+}
+
+function logout() {
+    localStorage.removeItem('cc_token');
+    setUserEmail('');
+    showLoginOverlay();
 }
 
 function showEmailStep() {
@@ -302,6 +313,8 @@ function showOtpStep() {
 }
 
 // ── Login flow ───────────────────────────────────────────────────────────────
+
+document.getElementById('logout-btn').addEventListener('click', logout);
 
 document.getElementById('send-code-btn').addEventListener('click', async () => {
     const emailInput = document.getElementById('email-input');
@@ -362,6 +375,7 @@ document.getElementById('verify-btn').addEventListener('click', async () => {
         if (res.ok) {
             const data = await res.json();
             localStorage.setItem('cc_token', data.token);
+            setUserEmail(document.getElementById('email-input').value.trim());
             hideLoginOverlay();
             // Try to load existing game; if none exists, start new
             const stateRes = await fetch(`${BASE_PATH}/api/state`, {
@@ -403,6 +417,8 @@ document.getElementById('verify-btn').addEventListener('click', async () => {
         });
 
         if (res.ok) {
+            const data = await res.json();
+            setUserEmail(data.email);
             hideLoginOverlay();
             // Try to load existing game state; if none exists, prompt new game
             const stateRes = await fetch(`${BASE_PATH}/api/state`, {

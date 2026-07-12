@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APP_DIR="/Users/paulfortin/Documents/cosmic-conquest"
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PID_FILE="$APP_DIR/.app.pid"
 PYTHON_BIN="$APP_DIR/venv/bin/python" # Assuming venv exists based on previous lsof output
 

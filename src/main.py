@@ -1,25 +1,24 @@
 # Cosmic Conquest - Main Game Server
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, Query, Request
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from typing import Dict, Optional
+import json
 import os
 import random
-import uvicorn
-import json
-import redis
+from typing import Dict, Optional
+
 from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi_otp_login import BearerTokenMiddleware, get_auth_router, OTPAuthConfig
+from pydantic import BaseModel
+import redis
+import uvicorn
 
 try:
     from .cylon import CylonAI
-    from . import auth
-    from .auth import BearerTokenMiddleware
 except ImportError:
     from cylon import CylonAI
-    import auth
-    from auth import BearerTokenMiddleware
+
 
 # Load Redis credentials
 load_dotenv()
@@ -78,11 +77,16 @@ class PrefixMiddleware:
 if BASE_PATH:
     app.add_middleware(PrefixMiddleware, prefix=BASE_PATH)
 
-# Inject the shared Redis client into the auth module (avoids circular import)
-auth.set_redis(r)
+# Initialize OTP Auth configuration
+auth_config = OTPAuthConfig(
+    app_name="Cosmic Conquest",
+    sender_email=os.getenv("GMAIL_ADDRESS", ""),
+    smtp_username=os.getenv("GMAIL_ADDRESS", ""),
+    smtp_password=os.getenv("GMAIL_APP_PASSWORD", "")
+)
 
 # Register auth router (/api/auth/*)
-app.include_router(auth.router)
+app.include_router(get_auth_router(r, auth_config))
 
 # BearerTokenMiddleware is added after PrefixMiddleware so it executes inside
 # it (FastAPI applies middleware in reverse registration order — last added

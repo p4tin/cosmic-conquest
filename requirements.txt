@@ -1,11 +1,12 @@
-fastapi==0.110.0
+fastapi>=0.139.0
 uvicorn==0.28.0
 redis==5.0.1
 python-dotenv==1.0.1
 debugpy>=1.6.0
-pytest==8.1.0
-pytest-asyncio==0.23.6
-httpx==0.25.2
+pytest>=9.1.1
+pytest-asyncio>=1.4.0
+httpx2>=2.5.0
 hypothesis==6.100.0
 fakeredis==2.21.0
-pydantic[email]==2.6.4
+pydantic[email]>=2.13.4
+git+ssh://git@github.com/p4tin/fastapi-otp-login.git@main

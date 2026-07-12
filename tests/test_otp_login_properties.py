@@ -10,12 +10,39 @@ import re
 import sys
 
 import fakeredis
+from fastapi_otp_login.config import OTPAuthConfig
+from fastapi_otp_login.email import send_otp_email
+from fastapi_otp_login.middleware import BearerTokenMiddleware
+from fastapi_otp_login.models import OTPRequest
+from fastapi_otp_login.router import get_auth_router
+from fastapi_otp_login.utils import check_and_increment, generate_otp
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.auth_utils import check_and_increment, generate_otp
+
+class RedisProxy:
+    def __init__(self):
+        self._r = fakeredis.FakeRedis(decode_responses=True)
+    def __getattr__(self, name):
+        return getattr(self._r, name)
+
+global_fake_r = RedisProxy()
+
+class DummyAuthModule:
+    r = global_fake_r
+    config = OTPAuthConfig(app_name="COSMIC CONQUEST", sender_email="test@test.com", smtp_username="u", smtp_password="p")
+    router = get_auth_router(global_fake_r, config)
+    OTPRequest = OTPRequest
+    
+    @classmethod
+    def set_redis(cls, redis_client):
+        cls.r = redis_client
+        global_fake_r._r = redis_client
+
+auth_module = DummyAuthModule()
+_auth_module = auth_module
 
 
 # ---------------------------------------------------------------------------
@@ -78,7 +105,7 @@ import email as email_lib
 import email.header
 from unittest.mock import patch, MagicMock
 
-from src.email_sender import send_otp_email, EMAIL_SUBJECT
+# email imported above
 
 
 @given(st.from_regex(r'\d{6}', fullmatch=True))
@@ -94,7 +121,7 @@ def test_email_body_contains_otp_and_correct_subject(otp):
     """
     captured_calls = []
 
-    with patch("src.email_sender.smtplib.SMTP") as mock_smtp_cls:
+    with patch("fastapi_otp_login.email.smtplib.SMTP") as mock_smtp_cls:
         mock_smtp = MagicMock()
         mock_smtp.__enter__ = MagicMock(return_value=mock_smtp)
         mock_smtp.__exit__ = MagicMock(return_value=False)
@@ -105,7 +132,7 @@ def test_email_body_contains_otp_and_correct_subject(otp):
         mock_smtp.sendmail.side_effect = capture_sendmail
         mock_smtp_cls.return_value = mock_smtp
 
-        send_otp_email("commander@bsg.mil", otp)
+        send_otp_email("commander@bsg.mil", otp, OTPAuthConfig(app_name="COSMIC CONQUEST", sender_email="test@test.com", smtp_username="u", smtp_password="p"))
 
     assert len(captured_calls) == 1, "sendmail must be called exactly once"
 
@@ -119,8 +146,8 @@ def test_email_body_contains_otp_and_correct_subject(otp):
         part.decode(charset or "ascii") if isinstance(part, bytes) else part
         for part, charset in decoded_parts
     )
-    assert decoded_subject == EMAIL_SUBJECT, (
-        f"Expected subject {EMAIL_SUBJECT!r}, got {decoded_subject!r}"
+    assert decoded_subject == "COSMIC CONQUEST - Your Access Code", (
+        f"Expected subject 'COSMIC CONQUEST - Your Access Code', got {decoded_subject!r}"
     )
 
     # decode=True returns bytes for encoded payloads; decode to str for comparison
@@ -136,7 +163,7 @@ def test_email_body_contains_otp_and_correct_subject(otp):
 # Validates: Requirements 1.6
 # ---------------------------------------------------------------------------
 
-import src.auth as auth_module
+# auth_module setup at top
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -164,7 +191,7 @@ def test_response_never_reveals_otp(email: str):
         app.include_router(auth_module.router)
         client = TestClient(app, raise_server_exceptions=True)
 
-        with patch("src.email_sender.smtplib.SMTP") as mock_smtp_cls:
+        with patch("fastapi_otp_login.email.smtplib.SMTP") as mock_smtp_cls:
             mock_smtp = MagicMock()
             mock_smtp.__enter__ = MagicMock(return_value=mock_smtp)
             mock_smtp.__exit__ = MagicMock(return_value=False)
@@ -212,7 +239,7 @@ import fakeredis as _fakeredis_module
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-import src.auth as _auth_module
+# _auth_module setup at top
 
 # Module-level app + client — created once to avoid per-example overhead.
 # A fresh FakeRedis is injected per example to prevent state bleed.
@@ -269,7 +296,7 @@ import fakeredis
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 
-import src.auth as auth_module
+# auth_module setup at top
 
 # Build a minimal FastAPI app that only mounts the auth router so we don't
 # need a live Redis connection for the game layer.
@@ -299,7 +326,7 @@ def test_otp_storage_round_trip(email: str):
     fake_r = fakeredis.FakeRedis(decode_responses=True)
     auth_module.set_redis(fake_r)
 
-    with patch("src.email_sender.smtplib.SMTP") as mock_smtp_cls:
+    with patch("fastapi_otp_login.email.smtplib.SMTP") as mock_smtp_cls:
         mock_smtp = MagicMock()
         mock_smtp.__enter__ = MagicMock(return_value=mock_smtp)
         mock_smtp.__exit__ = MagicMock(return_value=False)
@@ -405,7 +432,7 @@ def test_otp_mismatch_returns_401(email, stored_otp, submitted_otp):
 # Validates: Requirements 2.3
 # ---------------------------------------------------------------------------
 
-import src.auth as auth_module
+# auth_module setup at top
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, EmailStr
@@ -588,7 +615,7 @@ def test_relogin_preserves_game_state(email: str):
         app.include_router(auth_module.router)
         test_client = TestClient(app, raise_server_exceptions=True)
 
-        with patch("src.auth.send_otp_email"):
+        with patch("fastapi_otp_login.router.send_otp_email"):
             response = test_client.post(
                 "/api/auth/request-otp",
                 json={"email": email},
@@ -640,7 +667,7 @@ def test_relogin_preserves_game_state(email: str):
 # Validates: Requirements 3.3, 8.3
 # ---------------------------------------------------------------------------
 
-from src.auth import BearerTokenMiddleware
+# BearerTokenMiddleware imported at top
 
 # Game endpoints that require authentication.
 # Tuple of (method, path) — all are POST except /api/state which is GET.
@@ -859,7 +886,7 @@ def test_middleware_resolves_correct_game_state_key(email: str, token_uuid):
         with patch.object(main_module, "r", fake_r):
             # Build app with middleware + auth router + game endpoints
             from fastapi import FastAPI
-            from src.auth import BearerTokenMiddleware
+            # BearerTokenMiddleware imported at top
 
             app = FastAPI()
             app.include_router(auth_module.router)

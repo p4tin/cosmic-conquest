@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(node -c /Users/p4tin/Dropbox/code/cosmic-conquest/static/index.js)"
-    ]
-  }
-}

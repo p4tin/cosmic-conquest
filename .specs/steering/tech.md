@@ -25,16 +25,16 @@
 - **pytest** — test runner
 - **hypothesis** — property-based testing (13 correctness properties)
 - **fakeredis** — in-memory Redis for tests (no real Redis needed in CI)
-- **httpx** — async test client for FastAPI
+- **httpx2** — async test client for FastAPI
 
 ## Pinned Dependencies
 See `requirements.txt`. Key versions:
-- `fastapi==0.110.0`
+- `fastapi>=0.139.0`
 - `uvicorn==0.28.0`
 - `redis==5.0.1`
 - `python-dotenv==1.0.1`
-- `pydantic[email]==2.6.4`
-- `pytest==8.1.0`
+- `pydantic[email]>=2.13.4`
+- `pytest>=9.1.1`
 - `hypothesis==6.100.0`
 - `fakeredis==2.21.0`
 
